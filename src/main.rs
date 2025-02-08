@@ -9,10 +9,12 @@ enum Token {
     RightParen,
     Constant(String),
     Function(String),
+
 }
 
 fn main() {
 	let mut args: Vec<String> = env::args().collect();
+    let mut _functions: Vec<&str> = vec!["sin","cos","tan","asin","acos","atan","sqrt","abs","ln","exp"];
 	args.remove(0);
 	let mut args: String = args.into_iter().collect();
 	args.retain(|c| !c.is_whitespace());
