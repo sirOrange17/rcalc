@@ -9,12 +9,22 @@ enum Token {
     RightParen,
     Constant(String),
     Function(String),
+}
 
+#[derive(PartialEq)]
+enum Mode {
+    Evaluate,
+    Define,
+}
+
+#[derive(PartialEq, PartialOrd)]
+enum EvalResult {
+    Num(f64),
+    Comp(bool)
 }
 
 fn main() {
 	let mut args: Vec<String> = env::args().collect();
-    let mut _functions: Vec<&str> = vec!["sin","cos","tan","asin","acos","atan","sqrt","abs","ln","exp"];
 	args.remove(0);
 	let mut args: String = args.into_iter().collect();
 	args.retain(|c| !c.is_whitespace());
@@ -22,7 +32,7 @@ fn main() {
 	if args != "" {
         match parse_txt(&args, &0.0) {
             Ok(result) => {
-                println!("{}", result);
+                match result {EvalResult::Num(result_num) => println!("{}", result_num), EvalResult::Comp(result_bool) => println!("{}", result_bool)}
             }
             Err(e) => println!("Error: {}", e),
         }
@@ -30,29 +40,76 @@ fn main() {
 	}
 	
     let mut ans: f64 = 0.0;
+    let mut mode: Mode = Mode::Evaluate;
+
     loop {
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("Failed to read line.");
         input.retain(|c| !c.is_whitespace());
-
+        
         if input == "exit" {
             break;
+        } else if input == "eval" {
+            mode = Mode::Evaluate;
+            continue;
+        } else if input == "defn" {
+            mode = Mode::Define;
+            continue;
         }
 
         let cols = termsize::get().unwrap().cols as usize;
-        match parse_txt(&input, &ans) {
-            Ok(result) => {
-                ans = result;
-                println!("{:>cols$}", ans);
+
+        match mode {
+            Mode::Evaluate => {
+                match parse_txt(&input, &ans) {
+                    Ok(result) => {
+                        match result {
+                            EvalResult::Num(result_num) => {ans = result_num; println!("{:>cols$}", ans);}
+                            EvalResult::Comp(result_bool) => {println!("{:>cols$}", result_bool);}
+                        }
+                    }
+                    Err(e) => println!("Error: {}", e),}
             }
-            Err(e) => println!("Error: {}", e),
+            Mode::Define => todo!()
         }
     }
 }
 
-fn parse_txt(txt: &str, ans: &f64) -> Result<f64, String> {
-    let tokens = tokenize(txt, ans)?;
-    evaluate_expression(&tokens)
+fn equation_comparison(txt: &str, comp_index: Option<usize>) -> Result<EvalResult,String> {
+    let comparator = txt.as_bytes()[comp_index.unwrap()] as char;
+    let mut sides: Vec<&str> = txt.split(comparator).collect();
+    sides.retain(|val|val != &"");
+    if sides.len() != 2 {
+        return Err("Can only compare 2 equations".into());
+    }
+    let left_side = sides[0];
+    let right_side = sides[1];
+
+    let left_ans = 0.0;
+    let right_ans = 0.0;
+    
+    let left_result = parse_txt(left_side, &left_ans)?;
+    let right_result = parse_txt(right_side, &right_ans)?;
+
+    if comparator == '=' {
+        Ok(EvalResult::Comp(left_result == right_result))
+    } else if comparator == '>' {
+        Ok(EvalResult::Comp(left_result > right_result))
+    } else if comparator == '<' {
+        Ok(EvalResult::Comp(left_result < right_result))
+    } else {
+        Err("Comparison Failed".into())
+    }
+}
+
+fn parse_txt(txt: &str, ans: &f64) -> Result<EvalResult, String> {
+    let comp_index = txt.bytes().position(|val| {(val == b'=')|(val == b'<')|(val == b'>')});
+    if comp_index == None {
+        let tokens = tokenize(txt, ans)?;
+        evaluate_expression(&tokens)
+    } else {
+        equation_comparison(txt, comp_index)
+    }
 }
 
 fn tokenize(txt: &str, ans: &f64) -> Result<Vec<Token>, String> {
@@ -146,9 +203,9 @@ fn tokenize(txt: &str, ans: &f64) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-fn evaluate_expression(tokens: &[Token]) -> Result<f64, String> {
+fn evaluate_expression(tokens: &[Token]) -> Result<EvalResult, String> {
     let (result, _) = parse_tokens(tokens, 0)?;
-    Ok(result)
+    Ok(EvalResult::Num(result))
 }
 
 fn parse_tokens(tokens: &[Token], mut index: usize) -> Result<(f64, usize), String> {
