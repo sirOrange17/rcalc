@@ -11,3 +11,5 @@ Operation:
 - or just running without any arguments will put you in a calculator like interface (REPL loop)
   - `exit` will exit (obviously)
   - and than `ans` in an equation will put the previous answer in (pretty cool eh?)
+
+(Feb 2025) - Added comparison feature can check if two expressions are equal to, greater than, or less than
